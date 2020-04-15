@@ -18,9 +18,9 @@ var io  = require('socket.io').listen(server);
 server.listen(PORT, null, function() {
     console.log("Listening on port " + PORT);
 });
-//main.use(express.bodyParser());
 
 main.get('/', function(req, res){ res.sendFile(__dirname + '/client.html'); });
+// main.use(express.static('/resources'));
 // main.get('/index.html', function(req, res){ res.sendfile('newclient.html'); });
 // main.get('/client.html', function(req, res){ res.sendfile('newclient.html'); });
 
