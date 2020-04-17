@@ -10,10 +10,12 @@
         <style>
             html, body { 
                 background-color: #333; 
+                background-image: url("hunter.jpg");
+                background-size: cover;
             }
             video {
-                width:  320px;
-                height:  240px;
+                width:  420px;
+                height:  340px;
                 border:  1px solid black;
             }
 
@@ -32,9 +34,10 @@
         </style>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
+        <script src="hark.bundle.js"></script>
         <script>
             /** CONFIG **/
-            var SIGNALING_SERVER = "http://localhost:8081";
+            var SIGNALING_SERVER = "https://mooz.life:443";
             var USE_AUDIO = true;
             var USE_VIDEO = true;
             var DEFAULT_CHANNEL = 'some-global-channel-name';
@@ -53,6 +56,8 @@
             var local_media_stream = null; /* our own microphone / webcam */
             var peers = {};                /* keep track of our peer connections, indexed by peer_id (aka socket.io id) */
             var peer_media_elements = {};  /* keep track of our <video>/<audio> tags, indexed by peer_id */
+            var speechEvents = {};
+            var userIds = [];
 
             function init() {
                 console.log("Connecting to signaling server");
@@ -98,6 +103,17 @@
                 signaling_socket.on('addPeer', function(config) {
                     console.log('Signaling server said to add peer:', config);
                     var peer_id = config.peer_id;
+
+                    userIds += config.userId;
+
+                    speechEvents.on('speaking', function() {
+                       console.log('peer id: ' + userIds + ' is speaking'); 
+                    //    $('h2#whostalking').text().replace();
+                    // let html = "<h2 id='whostalking'>"+peer_id+"</h2>"
+                    // $('#whostalking').text('peer id: ' + peer_id + ' is speaking');
+                    $('#whostalking').text('peer id: ' + userIds + ' is speaking');
+                    });
+
                     if (peer_id in peers) {
                         /* This could happen if the user joins multiple channels where the other peer is also in. */
                         console.log("Already connected to peer ", peer_id);
@@ -130,6 +146,9 @@
                         if (MUTE_AUDIO_BY_DEFAULT) {
                             remote_media.attr("muted", "true");
                         }
+
+                        speechEvents = hark(event.stream, {});
+
                         // remote_media.attr("controls", '');
                         peer_media_elements[peer_id] = remote_media;
                         $('.video-box').append(remote_media);
@@ -271,7 +290,7 @@
 
                 if (typeof navigator.mediaDevices.getUserMedia === 'undefined') {
                     navigator.getUserMedia({
-                        audio: { echoCancellation: true, facingMode: "user" },
+                        audio: { echoCancellation: true, facingMode: "user", noiseSuppression: true, autoGainControl: true },
                         video: USE_VIDEO
                     }, function(stream) {
                         attachVideoToBody(stream);
@@ -282,7 +301,7 @@
                 } else {
                     navigator.mediaDevices.getUserMedia({
                         video: USE_VIDEO,
-                        audio: { echoCancellation: true, facingMode: "user" }
+                        audio: { echoCancellation: true, facingMode: "user", noiseSuppression: true, autoGainControl: true }
                     }).then(function(stream) {
                         attachVideoToBody(stream);
                         if (callback) callback();
@@ -299,6 +318,10 @@
                     // local_media.attr("playsinline", '');
                     // local_media.attr("muted", "true"); /* always mute ourselves by default */
                     // local_media.attr("controls", '');
+
+
+                    speechEvents = hark(stream, {});
+
                     $('.video-box').append(local_media);    
                     attachMediaStream(local_media[0], stream);
                 }
@@ -314,9 +337,11 @@
         the <video> and <audio> tags are all added and removed dynamically
         in 'onAddStream', 'setup_local_media', and 'removePeer'/'disconnect'
         -->
-        <h1 style="color: white;">Welcome to the group chat</h1>
+        <h1 style="color: red;">Welcome to fr33_cr0w birthday</h1>
         <div class="video-box">
 
         </div>
+
+        <h2 id="whostalking" style="color: black;"></h2>
     </body>
 </html>

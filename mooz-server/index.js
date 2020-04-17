@@ -1,7 +1,7 @@
 /**************/
 /*** CONFIG ***/
 /**************/
-var PORT = 8081;
+var PORT = 443;
 
 
 /*************/
@@ -9,9 +9,21 @@ var PORT = 8081;
 /*************/
 var express = require('express');
 var http = require('http');
+var https = require('https');
+var fs = require('fs');
+var path = require('path');
+var uuidv4 = require('uuid/v4');
+
+let httpsOptions = {
+    cert: fs.readFileSync(path.join(__dirname, './ssl') + '/mooz_life.crt'),
+    ca: fs.readFileSync(path.join(__dirname, './ssl') + '/mooz_life.ca-bundle'),
+    key: fs.readFileSync(path.join(__dirname, './ssl') + '/mooz_life.key')
+}
+
 var bodyParser = require('body-parser')
+
 var main = express()
-var server = http.createServer(main)
+var server = https.createServer(httpsOptions, main);
 var io  = require('socket.io').listen(server);
 //io.set('log level', 2);
 
@@ -20,7 +32,7 @@ server.listen(PORT, null, function() {
 });
 
 main.get('/', function(req, res){ res.sendFile(__dirname + '/client.html'); });
-// main.use(express.static('/resources'));
+main.use(express.static(path.join(__dirname, './resources')));
 // main.get('/index.html', function(req, res){ res.sendfile('newclient.html'); });
 // main.get('/client.html', function(req, res){ res.sendfile('newclient.html'); });
 
@@ -31,6 +43,7 @@ main.get('/', function(req, res){ res.sendFile(__dirname + '/client.html'); });
 /*************************/
 var channels = {};
 var sockets = {};
+var userIds = [];
 
 /**
  * Users will connect to the signaling server, after which they'll issue a "join"
@@ -71,8 +84,8 @@ io.sockets.on('connection', function (socket) {
         }
 
         for (id in channels[channel]) {
-            channels[channel][id].emit('addPeer', {'peer_id': socket.id, 'should_create_offer': false});
-            socket.emit('addPeer', {'peer_id': id, 'should_create_offer': true});
+            channels[channel][id].emit('addPeer', {'peer_id': socket.id, "userId": uuidv4(), 'should_create_offer': false});
+            socket.emit('addPeer', {'peer_id': id, "userId": uuidv4(), 'should_create_offer': true});
         }
 
         channels[channel][socket.id] = socket;
