@@ -1,15 +1,15 @@
 <template>
   <q-page class="flex flex-center">
-    <video-chat/>
+    <socket-listener/>
   </q-page>
 </template>
 
 <script>
-import videoChat from '../components/videoChat'
+import socketListener from '../components/socketListener'
 export default {
   name: 'PageIndex',
   components: {
-    videoChat
+    socketListener
   }
 }
 </script>

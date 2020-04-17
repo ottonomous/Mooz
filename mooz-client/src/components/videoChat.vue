@@ -15,9 +15,6 @@
   
   export default {
     name: 'vue-webrtc',
-    components: {
-      RTCMultiConnection
-    },
     data() {
       return {
         rtcmConnection: null,
