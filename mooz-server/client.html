@@ -72,6 +72,7 @@
                         join_chat_channel(DEFAULT_CHANNEL, {'whatever-you-want-here': 'stuff'});
                     });
                 });
+
                 signaling_socket.on('disconnect', function() {
                     console.log("Disconnected from signaling server");
                     /* Tear down all of our peer connections and remove all the
@@ -330,6 +331,7 @@
                     console.log("Error enabling video / audio " + error);
                 }
             }
+            
         </script>
     </head>
     <body onload='init()'>
