@@ -27,7 +27,7 @@
     />
   </div>
   <div class="button-box">
-    <div>
+    <!-- <div>
       <button @click="connectServer()">Connect to the Server</button>
     </div>
      <div>
@@ -35,7 +35,7 @@
     </div>
     <div>
       <button v-if="isConnected" @click="joinChannel()">Join Channel</button>
-    </div>
+    </div> -->
     <div>
       <button v-if="isConnected" @click="leaveChannel()">Leave Channel</button>
     </div>
@@ -57,14 +57,14 @@ export default {
       iceServers: [
         {urls:"stun:stun.l.google.com:19302"}
       ],
-      local_media_stream: null,
       selfStream: null,
       streams: []
     }
   },
-  mounted () {
-    console.log('created')
-    this.connectServer()
+  async mounted () {
+    console.log('JOINING')
+    await this.connectServer()
+    await this.joinChannel()
   },
   sockets: {
     connect() {
@@ -105,15 +105,39 @@ export default {
           });
         }
       }
+      
+      var that = this
 
       peer_connection.onaddstream = function(event) {
-        console.log("onAddStream", event);
-        this.streams.push(event)
+        that.streams.push(event.stream);
       }
-
-      peer_connection.addStream(this.selfStream)
-      console.log(peer_connection)
       
+      console.log(this.selfStream)
+      peer_connection.addStream(this.selfStream)
+
+
+      if (config.should_create_offer) {
+          console.log("Creating RTC offer to ", peer_id);
+          peer_connection.createOffer(
+              (local_description) => { 
+                  console.log("Local offer description is: ", local_description);
+                  peer_connection.setLocalDescription(local_description,
+                      () => { 
+                        this.$socket.emit('relaySessionDescription', 
+                          {'peer_id': peer_id, 'session_description': local_description});
+                        console.log("Offer setLocalDescription succeeded"); 
+                      },
+                      () => { Alert("Offer setLocalDescription failed!"); } 
+                  );
+              },
+              function (error) {
+                  console.log("Error sending offer: ", error);
+              });
+      }
+      
+    },
+    sessionDescription(config) {
+      this.parseSessionDescription(config)
     },
 
     whateverYouWantHereChannel(data) {
@@ -134,13 +158,6 @@ export default {
      this.$socket.emit('join', {"channel": channel, "userdata": userData});
     },
 
-    relayIceCandidate() {
-      const config = {
-
-      }
-      this.$socket.emit('relayICECandidate', config)
-    },
-
     leaveChannel () {
       const channel = 'some-global-channel-name'
       this.$socket.emit('part', channel);
@@ -152,7 +169,7 @@ export default {
     
     connectMediaStream() {
       // function setup_local_media(callback, errorback) {
-      if (this.local_media_stream != null) {  /* ie, if we've already been initialized */
+      if (this.selfStream != null) {  /* ie, if we've already been initialized */
         // if (callback) callback();
         return; 
       }
@@ -211,6 +228,42 @@ export default {
           // attachMediaStream(local_media[0], stream);
         // }
       }
+    },
+    parseSessionDescription(config) {
+      console.log('Remote description received: ', config);
+      var peer_id = config.peer_id;
+      var peer = this.peers[peer_id];
+      var remote_description = config.session_description;
+      console.log(config.session_description);
+
+      var desc = new RTCSessionDescription(remote_description);
+      var stuff = peer.setRemoteDescription(desc, 
+          () => {
+            console.log("setRemoteDescription succeeded");
+            if (remote_description.type == "offer") {
+              console.log("Creating answer");
+              peer.createAnswer(
+                  (local_description) => {
+                    console.log("Answer description is: ", local_description);
+                    peer.setLocalDescription(local_description,
+                      () => { 
+                        this.$socket.emit('relaySessionDescription', 
+                          {'peer_id': peer_id, 'session_description': local_description});
+                        console.log("Answer setLocalDescription succeeded");
+                      },
+                      () => { Alert("Answer setLocalDescription failed!"); }
+                    );
+                  },
+                  function(error) {
+                      console.log("Error creating answer: ", error);
+                      console.log(peer);
+                  });
+            }
+        },
+        (error) => {
+            console.log("setRemoteDescription error: ", error);
+        }
+      );
     }
   }
 }
